@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agenda Serviços</title>
+<style>
+  :root{
+    --bg:#121212; --panel:#1b1b1b; --panel2:#232323; --border:#333;
+    --gold:#c9a24b; --gold-dark:#8a6d2f; --text:#eee; --text-dim:#999;
+    --red:#b5443a; --green:#3f8a52; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:18px 16px 14px;background:linear-gradient(180deg,#1a1a1a,#121212);border-bottom:2px solid var(--gold);text-align:center;}
+  header h1{margin:0;font-size:1.3rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
+  header .sub{color:var(--text-dim);font-size:.78rem;margin-top:3px;}
+  header .logout{position:absolute;right:14px;top:16px;background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 12px;border-radius:7px;font-size:.72rem;cursor:pointer;}
+  nav{display:flex;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
+  nav button{flex:1 0 auto;background:none;border:none;color:var(--text-dim);padding:12px 10px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;}
+  nav button.active{color:var(--gold);border-bottom-color:var(--gold);}
+  main{padding:14px;max-width:760px;margin:0 auto;padding-bottom:60px;}
+  .view{display:none;} .view.active{display:block;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;}
+  .card h2{margin:0 0 10px;font-size:1rem;color:var(--gold);}
+  .card h3{margin:0 0 8px;font-size:.88rem;color:var(--text);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  label{display:block;font-size:.72rem;color:var(--text-dim);margin-bottom:3px;margin-top:8px;}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:7px;font-size:.88rem;}
+  textarea{resize:vertical;min-height:50px;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);}
+  .btn{display:inline-block;background:var(--gold);color:#1a1a1a;border:none;padding:9px 16px;border-radius:7px;font-weight:700;font-size:.82rem;cursor:pointer;margin-top:12px;}
+  .btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+  .btn.danger{background:var(--red);color:#fff;}
+  .btn.green{background:var(--green);color:#fff;}
+  .btn.small{padding:5px 10px;font-size:.72rem;margin-top:0;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .list-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .list-item:last-child{border-bottom:none;}
+  .list-item .info{flex:1;min-width:0;}
+  .list-item .info .title{font-weight:600;font-size:.9rem;}
+  .list-item .info .meta{font-size:.76rem;color:var(--text-dim);margin-top:2px;line-height:1.4;}
+  .tag{display:inline-block;font-size:.68rem;padding:2px 7px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+  .tag.agendada{background:#2b3a52;color:#8fb3e8;} .tag.concluida{background:#1f3b2a;color:#7fd999;} .tag.cancelada{background:#3b1f1f;color:#e59a9a;}
+  .empty{color:var(--text-dim);font-size:.82rem;text-align:center;padding:18px 0;}
+  table{width:100%;border-collapse:collapse;font-size:.8rem;}
+  table th,table td{padding:7px 6px;border-bottom:1px solid var(--border);text-align:left;}
+  table th{color:var(--text-dim);font-weight:600;font-size:.72rem;text-transform:uppercase;}
+  table tfoot td{font-weight:700;color:var(--gold);border-top:2px solid var(--gold);}
+  .summary-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .summary-box{flex:1;min-width:110px;background:var(--panel2);border-radius:8px;padding:10px 12px;text-align:center;}
+  .summary-box .num{font-size:1.3rem;font-weight:800;color:var(--gold);}
+  .summary-box .lbl{font-size:.68rem;color:var(--text-dim);text-transform:uppercase;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center;padding:16px;}
+  .modal-overlay.active{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--gold-dark);border-radius:var(--radius);padding:16px;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;}
+  .modal h3{color:var(--gold);margin:0 0 10px;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1a1a1a;padding:9px 18px;border-radius:20px;font-size:.82rem;font-weight:700;z-index:100;opacity:0;transition:opacity .25s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .wa-link{color:#7fd999;text-decoration:none;font-weight:600;}
+  .hint{font-size:.72rem;color:var(--text-dim);margin-top:4px;}
+  .err{color:#e59a9a;font-size:.8rem;margin-top:8px;}
+
+  /* AUTH SCREEN */
+  #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;}
+  #auth-screen .box{width:100%;max-width:380px;}
+  #auth-screen h1{text-align:center;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+  #auth-screen .tagline{text-align:center;color:var(--text-dim);font-size:.82rem;margin-bottom:22px;}
+  .auth-tabs{display:flex;gap:8px;margin-bottom:14px;}
+  .auth-tabs button{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text-dim);padding:9px;border-radius:7px;font-weight:700;font-size:.82rem;cursor:pointer;}
+  .auth-tabs button.active{background:var(--gold);color:#1a1a1a;border-color:var(--gold);}
+  #loading-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;color:var(--text-dim);}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">A carregar...</div>
+
+<!-- AUTH -->
+<div id="auth-screen" style="display:none;">
+  <div class="box card">
+    <h1>Agenda Serviços</h1>
+    <div class="tagline">Marcações, clientes e vendas para o teu negócio</div>
+    <div class="auth-tabs">
+      <button id="tab-login" class="active" onclick="setAuthMode('login')">Entrar</button>
+      <button id="tab-signup" onclick="setAuthMode('signup')">Criar conta</button>
+    </div>
+    <div id="signup-extra" style="display:none;">
+      <label>Nome do negócio</label>
+      <input type="text" id="signup-negocio" placeholder="Ex: Espada Barbershop" />
+      <label>Tipo de atividade</label>
+      <select id="signup-tipo">
+        <option>Barbearia</option>
+        <option>Cabeleireiro</option>
+        <option>Esteticista</option>
+        <option>Outro</option>
+      </select>
+    </div>
+    <label>Email</label>
+    <input type="email" id="auth-email" />
+    <label>Palavra-passe</label>
+    <input type="password" id="auth-password" />
+    <button class="btn" style="width:100%;" id="auth-submit" onclick="submitAuth()">Entrar</button>
+    <div class="err" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" style="display:none;">
+  <header style="position:relative;">
+    <button class="logout" onclick="doLogout()">Sair</button>
+    <h1 id="negocio-nome-header">Agenda Serviços</h1>
+    <div class="sub">Gestão de marcações e vendas</div>
+  </header>
+
+  <nav id="tabs">
+    <button data-view="resumo" class="active">Resumo</button>
+    <button data-view="marcacoes">Marcações</button>
+    <button data-view="vendas">Vendas</button>
+    <button data-view="clientes">Clientes</button>
+    <button data-view="servicos">Serviços</button>
+    <button data-view="definicoes">Definições</button>
+  </nav>
+
+  <main>
+    <!-- RESUMO -->
+    <section class="view active" id="view-resumo">
+      <div class="card">
+        <h2>Hoje — <span id="resumo-data-hoje"></span></h2>
+        <div class="summary-row">
+          <div class="summary-box"><div class="num" id="resumo-marc-hoje">0</div><div class="lbl">Marcações</div></div>
+          <div class="summary-box"><div class="num" id="resumo-vendas-hoje">0€</div><div class="lbl">Vendas</div></div>
+          <div class="summary-box"><div class="num" id="resumo-concluidas-hoje">0</div><div class="lbl">Concluídas</div></div>
+        </div>
+        <h3>Próximas marcações</h3>
+        <div id="resumo-proximas"></div>
+      </div>
+      <div class="card">
+        <h3>Este mês</h3>
+        <div class="summary-row">
+          <div class="summary-box"><div class="num" id="resumo-vendas-mes">0€</div><div class="lbl">Total vendas</div></div>
+          <div class="summary-box"><div class="num" id="resumo-atend-mes">0</div><div class="lbl">Atendimentos</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MARCAÇÕES -->
+    <section class="view" id="view-marcacoes">
+      <div class="card">
+        <h2>Contacto para marcações</h2>
+        <div id="wa-contact-display" class="meta"></div>
+        <div class="hint">Partilha este link nas redes sociais para os clientes marcarem por WhatsApp.</div>
+      </div>
+      <div class="card">
+        <h2>Nova marcação</h2>
+        <div class="grid2">
+          <div><label>Data</label><input type="date" id="marc-data" /></div>
+          <div><label>Hora</label><input type="time" id="marc-hora" /></div>
+        </div>
+        <label>Cliente</label><select id="marc-cliente"></select>
+        <label>Serviço</label><select id="marc-servico"></select>
+        <label>Notas (opcional)</label><textarea id="marc-notas"></textarea>
+        <button class="btn" onclick="addMarcacao()">Adicionar marcação</button>
+      </div>
+      <div class="card"><h2>Marcações agendadas</h2><div id="lista-marcacoes"></div></div>
+      <div class="card"><h2>Histórico de marcações</h2><div id="lista-marcacoes-arquivo"></div></div>
+    </section>
+
+    <!-- VENDAS -->
+    <section class="view" id="view-vendas">
+      <div class="card">
+        <h2>Registar atendimento / venda</h2>
+        <label>Data</label><input type="date" id="venda-data" />
+        <label>Cliente</label><select id="venda-cliente"></select>
+        <label>Serviço</label><select id="venda-servico" onchange="autoFillPreco()"></select>
+        <div class="grid2">
+          <div><label>Valor (€)</label><input type="number" step="0.01" id="venda-valor" /></div>
+          <div><label>Pagamento</label>
+            <select id="venda-pagamento">
+              <option>Dinheiro</option><option>MBWay</option><option>Cartão</option><option>Transferência</option><option>Outro</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" onclick="addVenda()">Registar venda</button>
+      </div>
+      <div class="card">
+        <h2>Histórico de vendas</h2>
+        <div class="grid3">
+          <div><label>De</label><input type="date" id="filtro-de" onchange="renderVendas()" /></div>
+          <div><label>Até</label><input type="date" id="filtro-ate" onchange="renderVendas()" /></div>
+          <div><label>&nbsp;</label><button class="btn secondary" style="margin-top:0;width:100%;" onclick="limparFiltro()">Limpar</button></div>
+        </div>
+        <div id="tabela-vendas" style="margin-top:12px;overflow-x:auto;"></div>
+        <div class="btn-row"><button class="btn green" onclick="exportarCSV()">Exportar para Excel (CSV)</button></div>
+        <div class="hint">O ficheiro CSV abre diretamente no Excel — útil como base para o recibo verde.</div>
+      </div>
+    </section>
+
+    <!-- CLIENTES -->
+    <section class="view" id="view-clientes">
+      <div class="card">
+        <h2>Novo cliente</h2>
+        <label>Nome</label><input type="text" id="cli-nome" />
+        <label>Telefone (com indicativo, ex: 351912345678)</label><input type="text" id="cli-tel" />
+        <label>Notas</label><textarea id="cli-notas"></textarea>
+        <button class="btn" onclick="addCliente()">Adicionar cliente</button>
+      </div>
+      <div class="card"><h2>Clientes</h2><div id="lista-clientes"></div></div>
+    </section>
+
+    <!-- SERVIÇOS -->
+    <section class="view" id="view-servicos">
+      <div class="card">
+        <h2>Novo serviço</h2>
+        <div class="grid2">
+          <div><label>Nome</label><input type="text" id="serv-nome" /></div>
+          <div><label>Preço (€)</label><input type="number" step="0.01" id="serv-preco" /></div>
+        </div>
+        <button class="btn" onclick="addServico()">Adicionar serviço</button>
+      </div>
+      <div class="card"><h2>Serviços</h2><div id="lista-servicos"></div></div>
+    </section>
+
+    <!-- DEFINIÇÕES -->
+    <section class="view" id="view-definicoes">
+      <div class="card">
+        <h2>Dados do negócio</h2>
+        <label>Nome do negócio</label><input type="text" id="def-nome" />
+        <label>Nº WhatsApp para marcações (com indicativo, sem + nem espaços)</label><input type="text" id="def-whatsapp" placeholder="351912345678" />
+        <button class="btn" onclick="saveDefinicoes()">Guardar</button>
+      </div>
+      <div class="card">
+        <h2>Conta</h2>
+        <p class="hint">Email da conta: <span id="def-email"></span></p>
+        <p class="hint">Os teus dados ficam guardados na nuvem (Firebase), associados a esta conta — acedes de qualquer dispositivo fazendo login.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL CONCLUIR MARCAÇÃO -->
+<div class="modal-overlay" id="modal-concluir">
+  <div class="modal">
+    <h3>Concluir marcação</h3>
+    <div id="modal-concluir-info" class="hint" style="margin-bottom:8px;"></div>
+    <label>Valor cobrado (€)</label><input type="number" step="0.01" id="modal-valor" />
+    <label>Forma de pagamento</label>
+    <select id="modal-pagamento"><option>Dinheiro</option><option>MBWay</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select>
+    <div class="btn-row">
+      <button class="btn green" onclick="confirmarConcluir()">Confirmar e registar venda</button>
+      <button class="btn secondary" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, getDoc, updateDoc,
+  collection, addDoc, onSnapshot, query
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVpMENzQJuhj_Q6tQz6ICv2tbxDGM6T6c",
+  authDomain: "agenda-servicos-b271b.firebaseapp.com",
+  projectId: "agenda-servicos-b271b",
+  storageBucket: "agenda-servicos-b271b.firebasestorage.app",
+  messagingSenderId: "477203818133",
+  appId: "1:477203818133:web:f755ff4d4689cef1d55d9c"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let uid = null;
+let negocio = { nome: "", tipo: "", whatsapp: "" };
+let servicos = [], clientes = [], marcacoes = [], vendas = [];
+let unsubs = [];
+
+// ---------- AUTH UI ----------
+window.setAuthMode = function(mode){
+  document.getElementById("tab-login").classList.toggle("active", mode==="login");
+  document.getElementById("tab-signup").classList.toggle("active", mode==="signup");
+  document.getElementById("signup-extra").style.display = mode==="signup" ? "block" : "none";
+  document.getElementById("auth-submit").textContent = mode==="signup" ? "Criar conta" : "Entrar";
+  document.getElementById("auth-submit").dataset.mode = mode;
+  document.getElementById("auth-error").textContent = "";
+};
+document.getElementById("auth-submit").dataset.mode = "login";
+
+window.submitAuth = async function(){
+  const mode = document.getElementById("auth-submit").dataset.mode;
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-password").value;
+  const errEl = document.getElementById("auth-error");
+  errEl.textContent = "";
+  if(!email || !password){ errEl.textContent = "Indica email e palavra-passe"; return; }
+  try{
+    if(mode === "signup"){
+      const nome = document.getElementById("signup-negocio").value.trim();
+      const tipo = document.getElementById("signup-tipo").value;
+      if(!nome){ errEl.textContent = "Indica o nome do negócio"; return; }
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "negocios", cred.user.uid), {
+        nome, tipo, whatsapp: "", criadoEm: new Date().toISOString()
+      });
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+  }catch(e){
+    errEl.textContent = traduzErro(e.code);
+  }
+};
+
+function traduzErro(code){
+  const map = {
+    "auth/email-already-in-use":"Este email já tem conta — tenta entrar.",
+    "auth/invalid-email":"Email inválido.",
+    "auth/weak-password":"Palavra-passe demasiado curta (mínimo 6 caracteres).",
+    "auth/invalid-credential":"Email ou palavra-passe incorretos.",
+    "auth/user-not-found":"Não existe conta com este email.",
+    "auth/wrong-password":"Palavra-passe incorreta."
+  };
+  return map[code] || ("Erro: " + code);
+}
+
+window.doLogout = async function(){
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, async (user)=>{
+  document.getElementById("loading-screen").style.display = "none";
+  unsubs.forEach(u=>u());
+  unsubs = [];
+  if(user){
+    uid = user.uid;
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("app-screen").style.display = "block";
+    document.getElementById("def-email").textContent = user.email;
+    await loadNegocio();
+    attachListeners();
+  } else {
+    uid = null;
+    document.getElementById("app-screen").style.display = "none";
+    document.getElementById("auth-screen").style.display = "flex";
+  }
+});
+
+async function loadNegocio(){
+  const ref = doc(db, "negocios", uid);
+  const snap = await getDoc(ref);
+  if(snap.exists()){
+    negocio = snap.data();
+    document.getElementById("negocio-nome-header").textContent = negocio.nome || "Agenda Serviços";
+    document.getElementById("def-nome").value = negocio.nome || "";
+    document.getElementById("def-whatsapp").value = negocio.whatsapp || "";
+  }
+}
+
+function attachListeners(){
+  unsubs.push(onSnapshot(collection(db,"negocios",uid,"servicos"), snap=>{
+    servicos = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderAll();
+  }));
+  unsubs.push(onSnapshot(collection(db,"negocios",uid,"clientes"), snap=>{
+    clientes = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderAll();
+  }));
+  unsubs.push(onSnapshot(collection(db,"negocios",uid,"marcacoes"), snap=>{
+    marcacoes = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderAll();
+  }));
+  unsubs.push(onSnapshot(collection(db,"negocios",uid,"vendas"), snap=>{
+    vendas = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderAll();
+  }));
+}
+
+// ---------- HELPERS ----------
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 1800);
+}
+function fmtEuro(v){ return (Number(v)||0).toFixed(2).replace(".",",") + "€"; }
+function fmtDataPT(iso){ if(!iso) return ""; const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; }
+function todayISO(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function clienteNome(id){ const c=clientes.find(c=>c.id===id); return c?c.nome:"(cliente removido)"; }
+function clienteTel(id){ const c=clientes.find(c=>c.id===id); return c?c.telefone:""; }
+function servicoNome(id){ const s=servicos.find(s=>s.id===id); return s?s.nome:"(serviço removido)"; }
+function servicoPreco(id){ const s=servicos.find(s=>s.id===id); return s?s.preco:0; }
+
+// ---------- NAVIGATION ----------
+document.getElementById("tabs").addEventListener("click", e=>{
+  const btn = e.target.closest("button[data-view]");
+  if(!btn) return;
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+btn.dataset.view).classList.add("active");
+});
+
+function populateSelects(){
+  const cliOptions = `<option value="">— selecionar cliente —</option>` +
+    clientes.map(c=>`<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  ["marc-cliente","venda-cliente"].forEach(id=>{
+    const sel = document.getElementById(id); const cur = sel.value;
+    sel.innerHTML = cliOptions; if(cur) sel.value = cur;
+  });
+  const servOptions = `<option value="">— selecionar serviço —</option>` +
+    servicos.map(s=>`<option value="${s.id}" data-preco="${s.preco}">${escapeHtml(s.nome)} (${fmtEuro(s.preco)})</option>`).join("");
+  ["marc-servico","venda-servico"].forEach(id=>{
+    const sel = document.getElementById(id); const cur = sel.value;
+    sel.innerHTML = servOptions; if(cur) sel.value = cur;
+  });
+}
+
+// ---------- CLIENTES ----------
+window.addCliente = async function(){
+  const nome = document.getElementById("cli-nome").value.trim();
+  const telefone = document.getElementById("cli-tel").value.trim();
+  const notas = document.getElementById("cli-notas").value.trim();
+  if(!nome){ showToast("Indica o nome do cliente"); return; }
+  await addDoc(collection(db,"negocios",uid,"clientes"), {nome, telefone, notas});
+  document.getElementById("cli-nome").value=""; document.getElementById("cli-tel").value=""; document.getElementById("cli-notas").value="";
+  showToast("Cliente adicionado");
+};
+
+function renderClientes(){
+  const el = document.getElementById("lista-clientes");
+  if(clientes.length===0){ el.innerHTML = `<div class="empty">Sem clientes registados.</div>`; return; }
+  el.innerHTML = clientes.map(c=>{
+    const waLink = c.telefone ? `<a class="wa-link" target="_blank" href="https://wa.me/${c.telefone.replace(/\D/g,'')}">WhatsApp</a>` : "";
+    return `<div class="list-item">
+      <div class="info"><div class="title">${escapeHtml(c.nome)}</div>
+      <div class="meta">${escapeHtml(c.telefone||"sem telefone")}${c.notas?(" · "+escapeHtml(c.notas)):""}</div></div>
+      <div class="btn-row" style="margin-top:0;">${waLink}</div>
+    </div>`;
+  }).join("");
+}
+
+// ---------- SERVIÇOS ----------
+window.addServico = async function(){
+  const nome = document.getElementById("serv-nome").value.trim();
+  const preco = parseFloat(document.getElementById("serv-preco").value);
+  if(!nome || isNaN(preco)){ showToast("Indica nome e preço"); return; }
+  await addDoc(collection(db,"negocios",uid,"servicos"), {nome, preco});
+  document.getElementById("serv-nome").value=""; document.getElementById("serv-preco").value="";
+  showToast("Serviço adicionado");
+};
+
+function renderServicos(){
+  const el = document.getElementById("lista-servicos");
+  if(servicos.length===0){ el.innerHTML = `<div class="empty">Sem serviços registados.</div>`; return; }
+  el.innerHTML = servicos.map(s=>`
+    <div class="list-item">
+      <div class="info"><div class="title">${escapeHtml(s.nome)}</div><div class="meta">${fmtEuro(s.preco)}</div></div>
+    </div>`).join("");
+}
+
+// ---------- MARCAÇÕES ----------
+window.addMarcacao = async function(){
+  const dataM = document.getElementById("marc-data").value;
+  const hora = document.getElementById("marc-hora").value;
+  const clienteId = document.getElementById("marc-cliente").value;
+  const servicoId = document.getElementById("marc-servico").value;
+  const notas = document.getElementById("marc-notas").value.trim();
+  if(!dataM || !hora || !clienteId){ showToast("Indica data, hora e cliente"); return; }
+  await addDoc(collection(db,"negocios",uid,"marcacoes"), {data:dataM, hora, clienteId, servicoId, notas, status:"agendada"});
+  document.getElementById("marc-notas").value="";
+  showToast("Marcação adicionada");
+};
+
+window.cancelarMarcacao = async function(id){
+  await updateDoc(doc(db,"negocios",uid,"marcacoes",id), {status:"cancelada"});
+};
+
+function renderMarcacoes(){
+  const ativas = marcacoes.filter(m=>m.status==="agendada").sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
+  const el = document.getElementById("lista-marcacoes");
+  el.innerHTML = ativas.length===0 ? `<div class="empty">Sem marcações agendadas.</div>` :
+    ativas.map(m=>{
+      const tel = clienteTel(m.clienteId);
+      const waLink = tel ? `<a class="wa-link" target="_blank" href="https://wa.me/${tel.replace(/\D/g,'')}?text=${encodeURIComponent('Olá '+clienteNome(m.clienteId)+', confirmo a sua marcação em '+fmtDataPT(m.data)+' às '+m.hora+'. Até já!')}">Confirmar WhatsApp</a>` : "";
+      return `<div class="list-item">
+        <div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(clienteNome(m.clienteId))}</div>
+        <div class="meta">${escapeHtml(servicoNome(m.servicoId))}${m.notas?(" · "+escapeHtml(m.notas)):""}</div></div>
+        <div class="btn-row" style="margin-top:0;">${waLink}
+          <button class="btn green small" onclick="abrirConcluir('${m.id}')">Concluir</button>
+          <button class="btn secondary small" onclick="cancelarMarcacao('${m.id}')">Cancelar</button>
+        </div></div>`;
+    }).join("");
+
+  const arquivo = marcacoes.filter(m=>m.status!=="agendada").sort((a,b)=>(b.data+b.hora).localeCompare(a.data+a.hora)).slice(0,30);
+  const el2 = document.getElementById("lista-marcacoes-arquivo");
+  el2.innerHTML = arquivo.length===0 ? `<div class="empty">Sem histórico.</div>` :
+    arquivo.map(m=>`<div class="list-item">
+      <div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(clienteNome(m.clienteId))}</div>
+      <div class="meta">${escapeHtml(servicoNome(m.servicoId))}</div></div>
+      <span class="tag ${m.status}">${m.status}</span></div>`).join("");
+
+  const wa = negocio.whatsapp || "";
+  document.getElementById("wa-contact-display").innerHTML = wa
+    ? `Link: <a class="wa-link" target="_blank" href="https://wa.me/${wa}">https://wa.me/${wa}</a>`
+    : `<span class="empty">Define o número em Definições.</span>`;
+}
+
+let marcacaoEmConclusao = null;
+window.abrirConcluir = function(id){
+  const m = marcacoes.find(m=>m.id===id);
+  if(!m) return;
+  marcacaoEmConclusao = id;
+  document.getElementById("modal-concluir-info").textContent = `${clienteNome(m.clienteId)} — ${servicoNome(m.servicoId)} — ${fmtDataPT(m.data)} ${m.hora}`;
+  document.getElementById("modal-valor").value = servicoPreco(m.servicoId) || "";
+  document.getElementById("modal-pagamento").value = "Dinheiro";
+  document.getElementById("modal-concluir").classList.add("active");
+};
+window.closeModal = function(){ document.getElementById("modal-concluir").classList.remove("active"); marcacaoEmConclusao = null; };
+window.confirmarConcluir = async function(){
+  const m = marcacoes.find(m=>m.id===marcacaoEmConclusao);
+  if(!m) return;
+  const valor = parseFloat(document.getElementById("modal-valor").value);
+  if(isNaN(valor)){ showToast("Indica o valor"); return; }
+  const pagamento = document.getElementById("modal-pagamento").value;
+  await addDoc(collection(db,"negocios",uid,"vendas"), {data:m.data, clienteId:m.clienteId, servicoId:m.servicoId, valor, pagamento, marcacaoId:m.id});
+  await updateDoc(doc(db,"negocios",uid,"marcacoes",m.id), {status:"concluida"});
+  closeModal();
+  showToast("Venda registada");
+};
+
+// ---------- VENDAS ----------
+window.autoFillPreco = function(){
+  const sel = document.getElementById("venda-servico");
+  const opt = sel.options[sel.selectedIndex];
+  const preco = opt ? opt.dataset.preco : null;
+  if(preco) document.getElementById("venda-valor").value = preco;
+};
+window.addVenda = async function(){
+  const dataV = document.getElementById("venda-data").value || todayISO();
+  const clienteId = document.getElementById("venda-cliente").value;
+  const servicoId = document.getElementById("venda-servico").value;
+  const valor = parseFloat(document.getElementById("venda-valor").value);
+  const pagamento = document.getElementById("venda-pagamento").value;
+  if(!clienteId || isNaN(valor)){ showToast("Indica cliente e valor"); return; }
+  await addDoc(collection(db,"negocios",uid,"vendas"), {data:dataV, clienteId, servicoId, valor, pagamento, marcacaoId:null});
+  document.getElementById("venda-valor").value="";
+  showToast("Venda registada");
+};
+window.limparFiltro = function(){
+  document.getElementById("filtro-de").value=""; document.getElementById("filtro-ate").value="";
+  renderVendas();
+};
+function vendasFiltradas(){
+  const de = document.getElementById("filtro-de").value;
+  const ate = document.getElementById("filtro-ate").value;
+  return vendas.filter(v=>(!de||v.data>=de)&&(!ate||v.data<=ate)).sort((a,b)=>b.data.localeCompare(a.data));
+}
+function renderVendas(){
+  const lista = vendasFiltradas();
+  const el = document.getElementById("tabela-vendas");
+  if(lista.length===0){ el.innerHTML = `<div class="empty">Sem vendas no período.</div>`; return; }
+  let total = 0;
+  const rows = lista.map(v=>{
+    total += Number(v.valor)||0;
+    return `<tr><td>${fmtDataPT(v.data)}</td><td>${escapeHtml(clienteNome(v.clienteId))}</td><td>${escapeHtml(servicoNome(v.servicoId))}</td><td>${v.pagamento||""}</td><td style="text-align:right">${fmtEuro(v.valor)}</td></tr>`;
+  }).join("");
+  el.innerHTML = `<table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Pagamento</th><th style="text-align:right">Valor</th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr><td colspan="4">Total</td><td style="text-align:right">${fmtEuro(total)}</td></tr></tfoot></table>`;
+}
+window.exportarCSV = function(){
+  const lista = vendasFiltradas();
+  if(lista.length===0){ showToast("Sem vendas para exportar"); return; }
+  const header = ["Data","Cliente","Telefone","Serviço","Valor","Pagamento","Nº Recibo Verde"];
+  const rows = lista.map(v=>[
+    fmtDataPT(v.data), clienteNome(v.clienteId), clienteTel(v.clienteId)||"", servicoNome(v.servicoId),
+    (Number(v.valor)||0).toFixed(2), v.pagamento||"", ""
+  ]);
+  const csv = [header, ...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
+  const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `vendas-${todayISO()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("Ficheiro exportado");
+};
+
+// ---------- DEFINIÇÕES ----------
+window.saveDefinicoes = async function(){
+  const nome = document.getElementById("def-nome").value.trim();
+  const whatsapp = document.getElementById("def-whatsapp").value.trim().replace(/\D/g,"");
+  await setDoc(doc(db,"negocios",uid), {...negocio, nome, whatsapp}, {merge:true});
+  negocio.nome = nome; negocio.whatsapp = whatsapp;
+  document.getElementById("negocio-nome-header").textContent = nome || "Agenda Serviços";
+  showToast("Definições guardadas");
+};
+
+// ---------- RESUMO ----------
+function renderResumo(){
+  const hoje = todayISO();
+  document.getElementById("resumo-data-hoje").textContent = fmtDataPT(hoje);
+  const marcHoje = marcacoes.filter(m=>m.data===hoje && m.status==="agendada");
+  document.getElementById("resumo-marc-hoje").textContent = marcHoje.length;
+  const vendasHoje = vendas.filter(v=>v.data===hoje);
+  document.getElementById("resumo-vendas-hoje").textContent = fmtEuro(vendasHoje.reduce((s,v)=>s+(Number(v.valor)||0),0));
+  const concluidasHoje = marcacoes.filter(m=>m.data===hoje && m.status==="concluida");
+  document.getElementById("resumo-concluidas-hoje").textContent = concluidasHoje.length;
+  const proximas = marcacoes.filter(m=>m.status==="agendada" && m.data>=hoje).sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora)).slice(0,5);
+  document.getElementById("resumo-proximas").innerHTML = proximas.length===0 ? `<div class="empty">Sem marcações futuras.</div>` :
+    proximas.map(m=>`<div class="list-item"><div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(clienteNome(m.clienteId))}</div><div class="meta">${escapeHtml(servicoNome(m.servicoId))}</div></div></div>`).join("");
+  const mesAtual = hoje.slice(0,7);
+  const vendasMes = vendas.filter(v=>v.data.slice(0,7)===mesAtual);
+  document.getElementById("resumo-vendas-mes").textContent = fmtEuro(vendasMes.reduce((s,v)=>s+(Number(v.valor)||0),0));
+  document.getElementById("resumo-atend-mes").textContent = vendasMes.length;
+}
+
+function renderAll(){
+  populateSelects();
+  renderResumo();
+  renderMarcacoes();
+  renderClientes();
+  renderServicos();
+  renderVendas();
+}
+
+document.getElementById("marc-data").value = todayISO();
+document.getElementById("venda-data").value = todayISO();
+</script>
+</body>
+</html>
