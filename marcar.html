@@ -132,6 +132,7 @@ let horaSelecionada = null;
 
 function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function fmtEuro(v){ return (Number(v)||0).toFixed(2).replace(".",",") + "€"; }
+function precoLabel(v){ return (v===null||v===undefined||v==="") ? "Sob consulta" : fmtEuro(v); }
 function todayISO(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
 
 function mostrarErro(msg){
@@ -177,7 +178,7 @@ function renderServicosPublico(){
   document.getElementById("lista-servicos-publico").innerHTML = servicos.map(s=>`
     <div class="servico-opt" data-id="${s.id}" onclick="selecionarServico('${s.id}')">
       <div><div class="nome">${escapeHtml(s.nome)}</div><div style="color:var(--text-dim);font-size:.78rem;">${s.duracaoMin||30} min</div></div>
-      <div class="preco">${fmtEuro(s.preco)}</div>
+      <div class="preco">${precoLabel(s.preco)}</div>
     </div>`).join("");
 }
 
