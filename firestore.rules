@@ -3,20 +3,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Cada negócio só é lido/escrito pelo seu próprio dono (uid do login)
     match /negocios/{negocioId} {
-      allow read, write: if request.auth != null && request.auth.uid == negocioId;
+      // Dados do negócio (nome, logótipo, horário) são públicos — precisos para a página de marcação
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == negocioId;
 
       match /servicos/{servicoId} {
-        allow read, write: if request.auth != null && request.auth.uid == negocioId;
+        // Lista de serviços é pública — precisa para a página de marcação
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == negocioId;
       }
+
       match /clientes/{clienteId} {
+        // Dados de clientes são privados, só o dono do negócio acede
         allow read, write: if request.auth != null && request.auth.uid == negocioId;
       }
+
       match /marcacoes/{marcacaoId} {
-        allow read, write: if request.auth != null && request.auth.uid == negocioId;
+        // Leitura pública (para a página de marcação verificar horários ocupados)
+        allow read: if true;
+        // Qualquer pessoa pode CRIAR uma marcação (pedido público), com campos limitados
+        allow create: if request.resource.data.status == 'agendada'
+                      && request.resource.data.data is string
+                      && request.resource.data.hora is string;
+        // Só o dono do negócio pode alterar ou apagar marcações (confirmar, cancelar, concluir)
+        allow update, delete: if request.auth != null && request.auth.uid == negocioId;
       }
+
       match /vendas/{vendaId} {
+        // Vendas são sempre privadas, só o dono do negócio acede
         allow read, write: if request.auth != null && request.auth.uid == negocioId;
       }
     }

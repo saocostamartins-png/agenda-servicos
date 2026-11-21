@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marcar</title>
+<style>
+  :root{
+    --bg:#121212; --panel:#1b1b1b; --panel2:#232323; --border:#333;
+    --gold:#c9a24b; --text:#eee; --text-dim:#999; --green:#3f8a52; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:22px 16px 16px;background:linear-gradient(180deg,#1a1a1a,#121212);border-bottom:2px solid var(--gold);text-align:center;}
+  header .logo{width:64px;height:64px;border-radius:50%;object-fit:contain;background:#0d0d0d;border:2px solid var(--gold);margin-bottom:8px;display:none;}
+  header h1{margin:0;font-size:1.3rem;color:var(--gold);}
+  header .sub{color:var(--text-dim);font-size:.82rem;margin-top:4px;}
+  main{max-width:480px;margin:0 auto;padding:16px;padding-bottom:60px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .card h2{margin:0 0 12px;font-size:1rem;color:var(--gold);}
+  label{display:block;font-size:.75rem;color:var(--text-dim);margin-bottom:4px;margin-top:10px;}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:7px;font-size:.9rem;}
+  textarea{resize:vertical;min-height:50px;}
+  .servico-opt{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;}
+  .servico-opt.selected{border-color:var(--gold);background:rgba(201,162,75,.1);}
+  .servico-opt .nome{font-weight:600;}
+  .servico-opt .preco{color:var(--gold);font-weight:700;}
+  .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px;margin-top:10px;}
+  .slot{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:9px 4px;border-radius:7px;text-align:center;font-size:.82rem;cursor:pointer;}
+  .slot.selected{background:var(--gold);color:#1a1a1a;border-color:var(--gold);font-weight:700;}
+  .slot.indisponivel{opacity:.3;text-decoration:line-through;cursor:not-allowed;}
+  .btn{display:inline-block;background:var(--gold);color:#1a1a1a;border:none;padding:11px 18px;border-radius:7px;font-weight:700;font-size:.9rem;cursor:pointer;width:100%;margin-top:14px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .empty{color:var(--text-dim);font-size:.85rem;text-align:center;padding:14px 0;}
+  .err{color:#e59a9a;font-size:.82rem;margin-top:8px;}
+  .ok{background:var(--panel);border:1px solid var(--green);border-radius:var(--radius);padding:24px;text-align:center;}
+  .ok h2{color:#7fd999;margin-top:0;}
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo" id="negocio-logo" alt="" />
+  <h1 id="negocio-nome">A carregar...</h1>
+  <div class="sub">Marcação online</div>
+</header>
+
+<main>
+  <div id="erro-geral" class="err" style="display:none;text-align:center;"></div>
+
+  <div id="form-marcacao" style="display:none;">
+    <div class="card">
+      <h2>1. Escolhe o serviço</h2>
+      <div id="lista-servicos-publico"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Escolhe o dia</h2>
+      <input type="date" id="pub-data" />
+      <div id="slots-container"></div>
+    </div>
+
+    <div class="card" id="card-dados-cliente" style="display:none;">
+      <h2>3. Os teus dados</h2>
+      <label>Nome</label>
+      <input type="text" id="pub-nome" />
+      <label>Telefone</label>
+      <input type="text" id="pub-telefone" placeholder="351912345678" />
+      <label>Notas (opcional)</label>
+      <textarea id="pub-notas"></textarea>
+      <button class="btn" id="btn-confirmar" onclick="confirmarMarcacaoPublica()">Confirmar marcação</button>
+      <div class="err" id="erro-confirmar"></div>
+    </div>
+  </div>
+
+  <div id="confirmacao" class="ok" style="display:none;">
+    <h2>✓ Marcação confirmada!</h2>
+    <p id="confirmacao-texto"></p>
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, getDocs, addDoc, query, where
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVpMENzQJuhj_Q6tQz6ICv2tbxDGM6T6c",
+  authDomain: "agenda-servicos-b271b.firebaseapp.com",
+  projectId: "agenda-servicos-b271b",
+  storageBucket: "agenda-servicos-b271b.firebasestorage.app",
+  messagingSenderId: "477203818133",
+  appId: "1:477203818133:web:f755ff4d4689cef1d55d9c"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const DIAS_SEMANA_IDX = ["dom","seg","ter","qua","qui","sex","sab"]; // JS getDay(): 0=domingo
+
+const params = new URLSearchParams(window.location.search);
+const negocioId = params.get("negocio");
+
+let negocio = null;
+let servicos = [];
+let servicoSelecionado = null;
+let horaSelecionada = null;
+
+function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtEuro(v){ return (Number(v)||0).toFixed(2).replace(".",",") + "€"; }
+function todayISO(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+
+function mostrarErro(msg){
+  document.getElementById("erro-geral").style.display = "block";
+  document.getElementById("erro-geral").textContent = msg;
+}
+
+async function init(){
+  if(!negocioId){ mostrarErro("Link inválido: falta identificar o negócio."); return; }
+  try{
+    const snap = await getDoc(doc(db, "negocios", negocioId));
+    if(!snap.exists()){ mostrarErro("Este negócio não foi encontrado."); return; }
+    negocio = snap.data();
+  }catch(e){
+    mostrarErro("Não foi possível carregar os dados deste negócio.");
+    return;
+  }
+  document.title = `Marcar — ${negocio.nome || "Agenda"}`;
+  document.getElementById("negocio-nome").textContent = negocio.nome || "Marcação online";
+  if(negocio.logoUrl){
+    const img = document.getElementById("negocio-logo");
+    img.src = negocio.logoUrl; img.style.display = "inline-block";
+  }
+  if(!negocio.horario){
+    mostrarErro("Este negócio ainda não definiu horários de marcação.");
+    return;
+  }
+
+  const servSnap = await getDocs(collection(db, "negocios", negocioId, "servicos"));
+  servicos = servSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  if(servicos.length===0){ mostrarErro("Este negócio ainda não tem serviços disponíveis para marcação."); return; }
+
+  document.getElementById("form-marcacao").style.display = "block";
+  document.getElementById("pub-data").value = todayISO();
+  document.getElementById("pub-data").min = todayISO();
+
+  renderServicosPublico();
+  document.getElementById("pub-data").addEventListener("change", renderSlots);
+  renderSlots();
+}
+
+function renderServicosPublico(){
+  document.getElementById("lista-servicos-publico").innerHTML = servicos.map(s=>`
+    <div class="servico-opt" data-id="${s.id}" onclick="selecionarServico('${s.id}')">
+      <div><div class="nome">${escapeHtml(s.nome)}</div><div style="color:var(--text-dim);font-size:.78rem;">${s.duracaoMin||30} min</div></div>
+      <div class="preco">${fmtEuro(s.preco)}</div>
+    </div>`).join("");
+}
+
+window.selecionarServico = function(id){
+  servicoSelecionado = servicos.find(s=>s.id===id);
+  document.querySelectorAll(".servico-opt").forEach(el=>el.classList.toggle("selected", el.dataset.id===id));
+  horaSelecionada = null;
+  renderSlots();
+};
+
+function gerarSlots(inicio, fim, duracaoMin){
+  const slots = [];
+  const [hI,mI] = inicio.split(":").map(Number);
+  const [hF,mF] = fim.split(":").map(Number);
+  let cur = hI*60+mI;
+  const fimMin = hF*60+mF;
+  while(cur + duracaoMin <= fimMin){
+    const h = String(Math.floor(cur/60)).padStart(2,"0");
+    const m = String(cur%60).padStart(2,"0");
+    slots.push(`${h}:${m}`);
+    cur += duracaoMin;
+  }
+  return slots;
+}
+
+function minutos(hora){ const [h,m] = hora.split(":").map(Number); return h*60+m; }
+
+async function renderSlots(){
+  const container = document.getElementById("slots-container");
+  const cardCliente = document.getElementById("card-dados-cliente");
+  horaSelecionada = null;
+  cardCliente.style.display = "none";
+
+  if(!servicoSelecionado){ container.innerHTML = `<div class="empty">Escolhe primeiro um serviço.</div>`; return; }
+
+  const dataSel = document.getElementById("pub-data").value;
+  if(!dataSel){ container.innerHTML = ""; return; }
+
+  const diaSemana = DIAS_SEMANA_IDX[new Date(dataSel+"T12:00:00").getDay()];
+  const cfgDia = negocio.horario.dias[diaSemana];
+  if(!cfgDia || !cfgDia.aberto){
+    container.innerHTML = `<div class="empty">Fechado neste dia.</div>`;
+    return;
+  }
+
+  const duracao = servicoSelecionado.duracaoMin || negocio.horario.duracaoPadrao || 30;
+  const slotsBase = gerarSlots(cfgDia.inicio, cfgDia.fim, duracao);
+
+  // Marcações já existentes nesse dia (para bloquear sobreposições)
+  let ocupadas = [];
+  try{
+    const q = query(collection(db,"negocios",negocioId,"marcacoes"), where("data","==",dataSel));
+    const snap = await getDocs(q);
+    ocupadas = snap.docs.map(d=>d.data()).filter(m=>m.status!=="cancelada");
+  }catch(e){ /* se falhar, segue sem bloqueio */ }
+
+  const intervalosOcupados = ocupadas.map(m=>{
+    const serv = servicos.find(s=>s.id===m.servicoId);
+    const dur = (serv && serv.duracaoMin) || negocio.horario.duracaoPadrao || 30;
+    const inicio = minutos(m.hora);
+    return [inicio, inicio+dur];
+  });
+
+  container.innerHTML = `<div class="slots">` + slotsBase.map(hora=>{
+    const inicioSlot = minutos(hora), fimSlot = inicioSlot + duracao;
+    const ocupado = intervalosOcupados.some(([oi,of])=> inicioSlot < of && fimSlot > oi);
+    return `<div class="slot ${ocupado?'indisponivel':''}" data-hora="${hora}" ${ocupado?'':`onclick="selecionarHora('${hora}')"`}>${hora}</div>`;
+  }).join("") + `</div>`;
+
+  if(slotsBase.length===0){
+    container.innerHTML = `<div class="empty">Sem horários configurados para este dia.</div>`;
+  }
+}
+
+window.selecionarHora = function(hora){
+  horaSelecionada = hora;
+  document.querySelectorAll(".slot").forEach(el=>el.classList.toggle("selected", el.dataset.hora===hora));
+  document.getElementById("card-dados-cliente").style.display = "block";
+};
+
+window.confirmarMarcacaoPublica = async function(){
+  const nome = document.getElementById("pub-nome").value.trim();
+  const telefone = document.getElementById("pub-telefone").value.trim();
+  const notas = document.getElementById("pub-notas").value.trim();
+  const erroEl = document.getElementById("erro-confirmar");
+  erroEl.textContent = "";
+
+  if(!nome || !telefone){ erroEl.textContent = "Indica o teu nome e telefone."; return; }
+  if(!servicoSelecionado || !horaSelecionada){ erroEl.textContent = "Escolhe o serviço e a hora."; return; }
+
+  const btn = document.getElementById("btn-confirmar");
+  btn.disabled = true; btn.textContent = "A confirmar...";
+
+  try{
+    const dataSel = document.getElementById("pub-data").value;
+    await addDoc(collection(db,"negocios",negocioId,"marcacoes"), {
+      data: dataSel, hora: horaSelecionada, servicoId: servicoSelecionado.id,
+      clienteNome: nome, clienteTelefone: telefone.replace(/\D/g,""), notas,
+      status: "agendada", origem: "publico"
+    });
+    document.getElementById("form-marcacao").style.display = "none";
+    document.getElementById("confirmacao").style.display = "block";
+    document.getElementById("confirmacao-texto").textContent =
+      `${servicoSelecionado.nome} — ${dataSel.split("-").reverse().join("/")} às ${horaSelecionada}. Já está marcado!`;
+  }catch(e){
+    erroEl.textContent = "Não foi possível confirmar a marcação. Tenta novamente.";
+    btn.disabled = false; btn.textContent = "Confirmar marcação";
+  }
+};
+
+init();
+</script>
+</body>
+</html>

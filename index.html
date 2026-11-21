@@ -151,9 +151,14 @@
     <!-- MARCAÇÕES -->
     <section class="view" id="view-marcacoes">
       <div class="card">
-        <h2>Contacto para marcações</h2>
+        <h2>Página de marcação online</h2>
+        <div id="link-marcacao-display" class="meta"></div>
+        <div class="btn-row"><button class="btn secondary small" onclick="copiarLinkMarcacao()">Copiar link</button></div>
+        <div class="hint">Partilha este link nas redes sociais — o cliente escolhe o serviço, dia e hora livres, e a marcação entra automaticamente aqui.</div>
+      </div>
+      <div class="card">
+        <h2>Contacto WhatsApp</h2>
         <div id="wa-contact-display" class="meta"></div>
-        <div class="hint">Partilha este link nas redes sociais para os clientes marcarem por WhatsApp.</div>
       </div>
       <div class="card">
         <h2>Nova marcação</h2>
@@ -216,11 +221,16 @@
     <section class="view" id="view-servicos">
       <div class="card">
         <h2>Novo serviço</h2>
-        <div class="grid2">
+        <div class="grid3">
           <div><label>Nome</label><input type="text" id="serv-nome" /></div>
           <div><label>Preço (€)</label><input type="number" step="0.01" id="serv-preco" /></div>
+          <div><label>Duração (min)</label><input type="number" step="5" id="serv-duracao" placeholder="30" /></div>
         </div>
         <button class="btn" onclick="addServico()">Adicionar serviço</button>
+      </div>
+      <div class="card" id="card-sugestoes-servicos" style="display:none;">
+        <h2>Sugestões para o teu tipo de negócio</h2>
+        <div id="lista-sugestoes-servicos"></div>
       </div>
       <div class="card"><h2>Serviços</h2><div id="lista-servicos"></div></div>
     </section>
@@ -239,6 +249,16 @@
         <div class="hint" id="logo-upload-status"></div>
         <button class="btn" onclick="saveDefinicoes()">Guardar</button>
       </div>
+
+      <div class="card">
+        <h2>Horário de funcionamento</h2>
+        <label>Duração padrão de cada atendimento (min)</label>
+        <input type="number" step="5" id="def-duracao-padrao" placeholder="30" style="max-width:140px;" />
+        <div id="horario-dias" style="margin-top:12px;"></div>
+        <button class="btn" onclick="saveDefinicoes()">Guardar</button>
+        <div class="hint">Isto define os horários disponíveis na página pública de marcação.</div>
+      </div>
+
       <div class="card">
         <h2>Conta</h2>
         <p class="hint">Email da conta: <span id="def-email"></span></p>
@@ -293,6 +313,18 @@ let uid = null;
 let negocio = { nome: "", tipo: "", whatsapp: "", logoUrl: "" };
 let servicos = [], clientes = [], marcacoes = [], vendas = [];
 let unsubs = [];
+
+const DIAS_SEMANA = [
+  {key:"seg", label:"Segunda"}, {key:"ter", label:"Terça"}, {key:"qua", label:"Quarta"},
+  {key:"qui", label:"Quinta"}, {key:"sex", label:"Sexta"}, {key:"sab", label:"Sábado"}, {key:"dom", label:"Domingo"}
+];
+function horarioDefault(){
+  const h = {duracaoPadrao:30, dias:{}};
+  DIAS_SEMANA.forEach(d=>{
+    h.dias[d.key] = { aberto: d.key!=="dom", inicio:"09:00", fim:"19:00" };
+  });
+  return h;
+}
 
 // ---------- AUTH UI ----------
 window.setAuthMode = function(mode){
@@ -373,7 +405,50 @@ async function loadNegocio(){
     document.getElementById("def-whatsapp").value = negocio.whatsapp || "";
     aplicarLogo(negocio.logoUrl);
   }
+  if(!negocio.horario) negocio.horario = horarioDefault();
+  document.getElementById("def-duracao-padrao").value = negocio.horario.duracaoPadrao || 30;
+  renderHorarioUI();
+  renderLinkMarcacao();
 }
+
+function renderHorarioUI(){
+  const el = document.getElementById("horario-dias");
+  el.innerHTML = DIAS_SEMANA.map(d=>{
+    const cfg = (negocio.horario && negocio.horario.dias && negocio.horario.dias[d.key]) || {aberto:false, inicio:"09:00", fim:"19:00"};
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <label style="display:flex;align-items:center;gap:6px;margin:0;width:90px;flex-shrink:0;">
+        <input type="checkbox" data-dia="${d.key}" class="horario-aberto" ${cfg.aberto?"checked":""} style="width:auto;" />
+        <span style="color:var(--text);font-size:.8rem;">${d.label}</span>
+      </label>
+      <input type="time" data-dia="${d.key}" class="horario-inicio" value="${cfg.inicio||'09:00'}" style="width:auto;" />
+      <span class="hint">até</span>
+      <input type="time" data-dia="${d.key}" class="horario-fim" value="${cfg.fim||'19:00'}" style="width:auto;" />
+    </div>`;
+  }).join("");
+}
+
+function lerHorarioUI(){
+  const dias = {};
+  DIAS_SEMANA.forEach(d=>{
+    const aberto = document.querySelector(`.horario-aberto[data-dia="${d.key}"]`).checked;
+    const inicio = document.querySelector(`.horario-inicio[data-dia="${d.key}"]`).value || "09:00";
+    const fim = document.querySelector(`.horario-fim[data-dia="${d.key}"]`).value || "19:00";
+    dias[d.key] = {aberto, inicio, fim};
+  });
+  const duracaoPadrao = parseInt(document.getElementById("def-duracao-padrao").value) || 30;
+  return {duracaoPadrao, dias};
+}
+
+function linkMarcacaoUrl(){
+  return `${window.location.origin}/marcar.html?negocio=${uid}`;
+}
+function renderLinkMarcacao(){
+  document.getElementById("link-marcacao-display").innerHTML =
+    `<a class="wa-link" target="_blank" href="${linkMarcacaoUrl()}">${linkMarcacaoUrl()}</a>`;
+}
+window.copiarLinkMarcacao = function(){
+  navigator.clipboard.writeText(linkMarcacaoUrl()).then(()=>showToast("Link copiado")).catch(()=>showToast("Não foi possível copiar"));
+};
 
 function aplicarLogo(url){
   const headerLogo = document.getElementById("negocio-logo-header");
@@ -420,6 +495,43 @@ function clienteNome(id){ const c=clientes.find(c=>c.id===id); return c?c.nome:"
 function clienteTel(id){ const c=clientes.find(c=>c.id===id); return c?c.telefone:""; }
 function servicoNome(id){ const s=servicos.find(s=>s.id===id); return s?s.nome:"(serviço removido)"; }
 function servicoPreco(id){ const s=servicos.find(s=>s.id===id); return s?s.preco:0; }
+// Nome/telefone de uma marcação: suporta tanto cliente já registado (clienteId) como
+// pedido vindo da página pública de marcação (clienteNome/clienteTelefone diretos, sem clienteId)
+function nomeDaMarcacao(m){ return m.clienteId ? clienteNome(m.clienteId) : (m.clienteNome || "(sem nome)"); }
+function telDaMarcacao(m){ return m.clienteId ? clienteTel(m.clienteId) : (m.clienteTelefone || ""); }
+
+const SERVICOS_SUGERIDOS = {
+  "Barbearia": [
+    {nome:"Corte", preco:12, duracaoMin:30}, {nome:"Barba", preco:8, duracaoMin:20},
+    {nome:"Corte + Barba", preco:18, duracaoMin:45}, {nome:"Corte à máquina", preco:8, duracaoMin:15}
+  ],
+  "Cabeleireiro": [
+    {nome:"Corte", preco:15, duracaoMin:30}, {nome:"Escova", preco:12, duracaoMin:30},
+    {nome:"Coloração", preco:35, duracaoMin:90}, {nome:"Mechas/Madeixas", preco:45, duracaoMin:120}
+  ],
+  "Esteticista": [
+    {nome:"Limpeza de pele", preco:30, duracaoMin:60}, {nome:"Manicure", preco:15, duracaoMin:45},
+    {nome:"Pedicure", preco:18, duracaoMin:45}, {nome:"Depilação (pernas)", preco:20, duracaoMin:30}
+  ]
+};
+function renderSugestoesServicos(){
+  const card = document.getElementById("card-sugestoes-servicos");
+  const lista = SERVICOS_SUGERIDOS[negocio.tipo];
+  if(!lista){ card.style.display = "none"; return; }
+  const existentes = new Set(servicos.map(s=>s.nome.toLowerCase()));
+  const disponiveis = lista.filter(s=>!existentes.has(s.nome.toLowerCase()));
+  if(disponiveis.length===0){ card.style.display = "none"; return; }
+  card.style.display = "block";
+  document.getElementById("lista-sugestoes-servicos").innerHTML = disponiveis.map((s,i)=>`
+    <div class="list-item">
+      <div class="info"><div class="title">${escapeHtml(s.nome)}</div><div class="meta">${fmtEuro(s.preco)} · ${s.duracaoMin} min</div></div>
+      <button class="btn secondary small" onclick='adicionarSugestao(${JSON.stringify(s)})'>+ Adicionar</button>
+    </div>`).join("");
+}
+window.adicionarSugestao = async function(s){
+  await addDoc(collection(db,"negocios",uid,"servicos"), {nome:s.nome, preco:s.preco, duracaoMin:s.duracaoMin});
+  showToast("Serviço adicionado");
+};
 
 // ---------- NAVIGATION ----------
 document.getElementById("tabs").addEventListener("click", e=>{
@@ -474,18 +586,20 @@ function renderClientes(){
 window.addServico = async function(){
   const nome = document.getElementById("serv-nome").value.trim();
   const preco = parseFloat(document.getElementById("serv-preco").value);
+  const duracaoMin = parseInt(document.getElementById("serv-duracao").value) || (negocio.horario ? negocio.horario.duracaoPadrao : 30);
   if(!nome || isNaN(preco)){ showToast("Indica nome e preço"); return; }
-  await addDoc(collection(db,"negocios",uid,"servicos"), {nome, preco});
-  document.getElementById("serv-nome").value=""; document.getElementById("serv-preco").value="";
+  await addDoc(collection(db,"negocios",uid,"servicos"), {nome, preco, duracaoMin});
+  document.getElementById("serv-nome").value=""; document.getElementById("serv-preco").value=""; document.getElementById("serv-duracao").value="";
   showToast("Serviço adicionado");
 };
 
 function renderServicos(){
+  renderSugestoesServicos();
   const el = document.getElementById("lista-servicos");
   if(servicos.length===0){ el.innerHTML = `<div class="empty">Sem serviços registados.</div>`; return; }
   el.innerHTML = servicos.map(s=>`
     <div class="list-item">
-      <div class="info"><div class="title">${escapeHtml(s.nome)}</div><div class="meta">${fmtEuro(s.preco)}</div></div>
+      <div class="info"><div class="title">${escapeHtml(s.nome)}</div><div class="meta">${fmtEuro(s.preco)} · ${s.duracaoMin||30} min</div></div>
     </div>`).join("");
 }
 
@@ -511,10 +625,12 @@ function renderMarcacoes(){
   const el = document.getElementById("lista-marcacoes");
   el.innerHTML = ativas.length===0 ? `<div class="empty">Sem marcações agendadas.</div>` :
     ativas.map(m=>{
-      const tel = clienteTel(m.clienteId);
-      const waLink = tel ? `<a class="wa-link" target="_blank" href="https://wa.me/${tel.replace(/\D/g,'')}?text=${encodeURIComponent('Olá '+clienteNome(m.clienteId)+', confirmo a sua marcação em '+fmtDataPT(m.data)+' às '+m.hora+'. Até já!')}">Confirmar WhatsApp</a>` : "";
+      const tel = telDaMarcacao(m);
+      const nome = nomeDaMarcacao(m);
+      const origemTag = m.origem==="publico" ? ` <span class="tag agendada" style="margin-left:4px;">online</span>` : "";
+      const waLink = tel ? `<a class="wa-link" target="_blank" href="https://wa.me/${tel.replace(/\D/g,'')}?text=${encodeURIComponent('Olá '+nome+', confirmo a sua marcação em '+fmtDataPT(m.data)+' às '+m.hora+'. Até já!')}">Confirmar WhatsApp</a>` : "";
       return `<div class="list-item">
-        <div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(clienteNome(m.clienteId))}</div>
+        <div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(nome)}${origemTag}</div>
         <div class="meta">${escapeHtml(servicoNome(m.servicoId))}${m.notas?(" · "+escapeHtml(m.notas)):""}</div></div>
         <div class="btn-row" style="margin-top:0;">${waLink}
           <button class="btn green small" onclick="abrirConcluir('${m.id}')">Concluir</button>
@@ -526,7 +642,7 @@ function renderMarcacoes(){
   const el2 = document.getElementById("lista-marcacoes-arquivo");
   el2.innerHTML = arquivo.length===0 ? `<div class="empty">Sem histórico.</div>` :
     arquivo.map(m=>`<div class="list-item">
-      <div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(clienteNome(m.clienteId))}</div>
+      <div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(nomeDaMarcacao(m))}</div>
       <div class="meta">${escapeHtml(servicoNome(m.servicoId))}</div></div>
       <span class="tag ${m.status}">${m.status}</span></div>`).join("");
 
@@ -541,7 +657,7 @@ window.abrirConcluir = function(id){
   const m = marcacoes.find(m=>m.id===id);
   if(!m) return;
   marcacaoEmConclusao = id;
-  document.getElementById("modal-concluir-info").textContent = `${clienteNome(m.clienteId)} — ${servicoNome(m.servicoId)} — ${fmtDataPT(m.data)} ${m.hora}`;
+  document.getElementById("modal-concluir-info").textContent = `${nomeDaMarcacao(m)} — ${servicoNome(m.servicoId)} — ${fmtDataPT(m.data)} ${m.hora}`;
   document.getElementById("modal-valor").value = servicoPreco(m.servicoId) || "";
   document.getElementById("modal-pagamento").value = "Dinheiro";
   document.getElementById("modal-concluir").classList.add("active");
@@ -553,7 +669,10 @@ window.confirmarConcluir = async function(){
   const valor = parseFloat(document.getElementById("modal-valor").value);
   if(isNaN(valor)){ showToast("Indica o valor"); return; }
   const pagamento = document.getElementById("modal-pagamento").value;
-  await addDoc(collection(db,"negocios",uid,"vendas"), {data:m.data, clienteId:m.clienteId, servicoId:m.servicoId, valor, pagamento, marcacaoId:m.id});
+  await addDoc(collection(db,"negocios",uid,"vendas"), {
+    data:m.data, clienteId:m.clienteId||null, clienteNome:m.clienteNome||null, clienteTelefone:m.clienteTelefone||null,
+    servicoId:m.servicoId, valor, pagamento, marcacaoId:m.id
+  });
   await updateDoc(doc(db,"negocios",uid,"marcacoes",m.id), {status:"concluida"});
   closeModal();
   showToast("Venda registada");
@@ -593,7 +712,7 @@ function renderVendas(){
   let total = 0;
   const rows = lista.map(v=>{
     total += Number(v.valor)||0;
-    return `<tr><td>${fmtDataPT(v.data)}</td><td>${escapeHtml(clienteNome(v.clienteId))}</td><td>${escapeHtml(servicoNome(v.servicoId))}</td><td>${v.pagamento||""}</td><td style="text-align:right">${fmtEuro(v.valor)}</td></tr>`;
+    return `<tr><td>${fmtDataPT(v.data)}</td><td>${escapeHtml(nomeDaMarcacao(v))}</td><td>${escapeHtml(servicoNome(v.servicoId))}</td><td>${v.pagamento||""}</td><td style="text-align:right">${fmtEuro(v.valor)}</td></tr>`;
   }).join("");
   el.innerHTML = `<table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Pagamento</th><th style="text-align:right">Valor</th></tr></thead>
     <tbody>${rows}</tbody><tfoot><tr><td colspan="4">Total</td><td style="text-align:right">${fmtEuro(total)}</td></tr></tfoot></table>`;
@@ -603,7 +722,7 @@ window.exportarCSV = function(){
   if(lista.length===0){ showToast("Sem vendas para exportar"); return; }
   const header = ["Data","Cliente","Telefone","Serviço","Valor","Pagamento","Nº Recibo Verde"];
   const rows = lista.map(v=>[
-    fmtDataPT(v.data), clienteNome(v.clienteId), clienteTel(v.clienteId)||"", servicoNome(v.servicoId),
+    fmtDataPT(v.data), nomeDaMarcacao(v), telDaMarcacao(v)||"", servicoNome(v.servicoId),
     (Number(v.valor)||0).toFixed(2), v.pagamento||"", ""
   ]);
   const csv = [header, ...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
@@ -666,8 +785,10 @@ window.saveDefinicoes = async function(){
     }
   }
 
-  await setDoc(doc(db,"negocios",uid), {...negocio, nome, whatsapp, logoUrl}, {merge:true});
-  negocio.nome = nome; negocio.whatsapp = whatsapp; negocio.logoUrl = logoUrl;
+  const horario = lerHorarioUI();
+
+  await setDoc(doc(db,"negocios",uid), {...negocio, nome, whatsapp, logoUrl, horario}, {merge:true});
+  negocio.nome = nome; negocio.whatsapp = whatsapp; negocio.logoUrl = logoUrl; negocio.horario = horario;
   document.getElementById("negocio-nome-header").textContent = nome || "Agenda Serviços";
   aplicarLogo(logoUrl);
   fileInput.value = "";
