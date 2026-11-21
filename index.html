@@ -292,7 +292,7 @@ import {
   signInWithEmailAndPassword, signOut
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
-  getFirestore, doc, setDoc, getDoc, updateDoc,
+  getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc,
   collection, addDoc, onSnapshot, query
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
@@ -600,8 +600,15 @@ function renderServicos(){
   el.innerHTML = servicos.map(s=>`
     <div class="list-item">
       <div class="info"><div class="title">${escapeHtml(s.nome)}</div><div class="meta">${fmtEuro(s.preco)} · ${s.duracaoMin||30} min</div></div>
+      <div class="btn-row" style="margin-top:0;"><button class="btn secondary small" onclick="removerServico('${s.id}','${escapeHtml(s.nome).replace(/'/g,"\\'")}')">Remover</button></div>
     </div>`).join("");
 }
+
+window.removerServico = async function(id, nome){
+  if(!confirm(`Remover o serviço "${nome}"? Marcações e vendas antigas que o usam mantêm o nome guardado.`)) return;
+  await deleteDoc(doc(db,"negocios",uid,"servicos",id));
+  showToast("Serviço removido");
+};
 
 // ---------- MARCAÇÕES ----------
 window.addMarcacao = async function(){
