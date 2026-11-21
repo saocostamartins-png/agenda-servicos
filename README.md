@@ -25,3 +25,8 @@ negocios/{uid}
   marcacoes/{id}   { data, hora, clienteId, servicoId, notas, status }
   vendas/{id}      { data, clienteId, servicoId, valor, pagamento, marcacaoId }
 ```
+
+## Firebase Storage — regras de segurança (logótipos)
+As regras estão em `storage.rules`. Cola o conteúdo em
+Firebase Console → Storage → Regras → Publicar.
+Cada negócio só pode escrever na sua própria pasta `logos/{uid}/`; a leitura é pública (para o logótipo aparecer no cabeçalho).

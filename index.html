@@ -13,6 +13,7 @@
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
   header{padding:18px 16px 14px;background:linear-gradient(180deg,#1a1a1a,#121212);border-bottom:2px solid var(--gold);text-align:center;}
+  header .logo{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);margin-bottom:6px;display:none;}
   header h1{margin:0;font-size:1.3rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
   header .sub{color:var(--text-dim);font-size:.78rem;margin-top:3px;}
   header .logout{position:absolute;right:14px;top:16px;background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 12px;border-radius:7px;font-size:.72rem;cursor:pointer;}
@@ -111,6 +112,7 @@
 <div id="app-screen" style="display:none;">
   <header style="position:relative;">
     <button class="logout" onclick="doLogout()">Sair</button>
+    <img class="logo" id="negocio-logo-header" alt="Logótipo" />
     <h1 id="negocio-nome-header">Agenda Serviços</h1>
     <div class="sub">Gestão de marcações e vendas</div>
   </header>
@@ -229,6 +231,12 @@
         <h2>Dados do negócio</h2>
         <label>Nome do negócio</label><input type="text" id="def-nome" />
         <label>Nº WhatsApp para marcações (com indicativo, sem + nem espaços)</label><input type="text" id="def-whatsapp" placeholder="351912345678" />
+        <label>Logótipo</label>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+          <img id="def-logo-preview" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--border);display:none;" />
+          <input type="file" id="def-logo-file" accept="image/*" style="flex:1;" />
+        </div>
+        <div class="hint" id="logo-upload-status"></div>
         <button class="btn" onclick="saveDefinicoes()">Guardar</button>
       </div>
       <div class="card">
@@ -267,6 +275,9 @@ import {
   getFirestore, doc, setDoc, getDoc, updateDoc,
   collection, addDoc, onSnapshot, query
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {
+  getStorage, ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAVpMENzQJuhj_Q6tQz6ICv2tbxDGM6T6c",
@@ -280,9 +291,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 let uid = null;
-let negocio = { nome: "", tipo: "", whatsapp: "" };
+let negocio = { nome: "", tipo: "", whatsapp: "", logoUrl: "" };
 let servicos = [], clientes = [], marcacoes = [], vendas = [];
 let unsubs = [];
 
@@ -363,6 +375,19 @@ async function loadNegocio(){
     document.getElementById("negocio-nome-header").textContent = negocio.nome || "Agenda Serviços";
     document.getElementById("def-nome").value = negocio.nome || "";
     document.getElementById("def-whatsapp").value = negocio.whatsapp || "";
+    aplicarLogo(negocio.logoUrl);
+  }
+}
+
+function aplicarLogo(url){
+  const headerLogo = document.getElementById("negocio-logo-header");
+  const preview = document.getElementById("def-logo-preview");
+  if(url){
+    headerLogo.src = url; headerLogo.style.display = "inline-block";
+    preview.src = url; preview.style.display = "inline-block";
+  } else {
+    headerLogo.style.display = "none";
+    preview.style.display = "none";
   }
 }
 
@@ -599,9 +624,35 @@ window.exportarCSV = function(){
 window.saveDefinicoes = async function(){
   const nome = document.getElementById("def-nome").value.trim();
   const whatsapp = document.getElementById("def-whatsapp").value.trim().replace(/\D/g,"");
-  await setDoc(doc(db,"negocios",uid), {...negocio, nome, whatsapp}, {merge:true});
-  negocio.nome = nome; negocio.whatsapp = whatsapp;
+  const fileInput = document.getElementById("def-logo-file");
+  const statusEl = document.getElementById("logo-upload-status");
+  let logoUrl = negocio.logoUrl || "";
+
+  if(fileInput.files && fileInput.files[0]){
+    const file = fileInput.files[0];
+    if(file.size > 2*1024*1024){
+      showToast("Imagem demasiado grande (máx. 2MB)");
+      return;
+    }
+    try{
+      statusEl.textContent = "A carregar logótipo...";
+      const path = `logos/${uid}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      logoUrl = await getDownloadURL(storageRef);
+      statusEl.textContent = "";
+    }catch(e){
+      statusEl.textContent = "Erro ao carregar logótipo: " + e.code;
+      showToast("Não foi possível carregar o logótipo");
+      return;
+    }
+  }
+
+  await setDoc(doc(db,"negocios",uid), {...negocio, nome, whatsapp, logoUrl}, {merge:true});
+  negocio.nome = nome; negocio.whatsapp = whatsapp; negocio.logoUrl = logoUrl;
   document.getElementById("negocio-nome-header").textContent = nome || "Agenda Serviços";
+  aplicarLogo(logoUrl);
+  fileInput.value = "";
   showToast("Definições guardadas");
 };
 
