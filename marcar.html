@@ -289,7 +289,8 @@ window.confirmarMarcacaoPublica = async function(){
     document.getElementById("confirmacao-texto").textContent =
       `${servicoSelecionado.nome} — ${dataSel.split("-").reverse().join("/")} às ${horaSelecionada}. Já está marcado!`;
 
-    if (window.emailjs) {
+    const NEGOCIO_ID_NOTIFICACAO = "YAPMGPgoK7OfsIyh24VUUTKk34B2"; // Prime Value — só este negócio dispara o email
+    if (window.emailjs && negocioId === NEGOCIO_ID_NOTIFICACAO) {
       emailjs.send("service_zx62icm", "template_s1htocn", {
         cliente: nome,
         servico: servicoSelecionado.nome,
