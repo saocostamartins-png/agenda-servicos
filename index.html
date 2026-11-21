@@ -577,10 +577,18 @@ function renderClientes(){
     return `<div class="list-item">
       <div class="info"><div class="title">${escapeHtml(c.nome)}</div>
       <div class="meta">${escapeHtml(c.telefone||"sem telefone")}${c.notas?(" · "+escapeHtml(c.notas)):""}</div></div>
-      <div class="btn-row" style="margin-top:0;">${waLink}</div>
+      <div class="btn-row" style="margin-top:0;">${waLink}
+        <button class="btn secondary small" onclick="removerCliente('${c.id}','${escapeHtml(c.nome).replace(/'/g,"\\'")}')">Remover</button>
+      </div>
     </div>`;
   }).join("");
 }
+
+window.removerCliente = async function(id, nome){
+  if(!confirm(`Remover o cliente "${nome}"? Marcações e vendas antigas mantêm o nome guardado.`)) return;
+  await deleteDoc(doc(db,"negocios",uid,"clientes",id));
+  showToast("Cliente removido");
+};
 
 // ---------- SERVIÇOS ----------
 window.addServico = async function(){
@@ -627,6 +635,12 @@ window.cancelarMarcacao = async function(id){
   await updateDoc(doc(db,"negocios",uid,"marcacoes",id), {status:"cancelada"});
 };
 
+window.removerMarcacao = async function(id){
+  if(!confirm("Remover esta marcação definitivamente?")) return;
+  await deleteDoc(doc(db,"negocios",uid,"marcacoes",id));
+  showToast("Marcação removida");
+};
+
 function renderMarcacoes(){
   const ativas = marcacoes.filter(m=>m.status==="agendada").sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
   const el = document.getElementById("lista-marcacoes");
@@ -642,6 +656,7 @@ function renderMarcacoes(){
         <div class="btn-row" style="margin-top:0;">${waLink}
           <button class="btn green small" onclick="abrirConcluir('${m.id}')">Concluir</button>
           <button class="btn secondary small" onclick="cancelarMarcacao('${m.id}')">Cancelar</button>
+          <button class="btn secondary small" onclick="removerMarcacao('${m.id}')">Remover</button>
         </div></div>`;
     }).join("");
 
@@ -651,7 +666,9 @@ function renderMarcacoes(){
     arquivo.map(m=>`<div class="list-item">
       <div class="info"><div class="title">${fmtDataPT(m.data)} às ${m.hora} — ${escapeHtml(nomeDaMarcacao(m))}</div>
       <div class="meta">${escapeHtml(servicoNome(m.servicoId))}</div></div>
-      <span class="tag ${m.status}">${m.status}</span></div>`).join("");
+      <div class="btn-row" style="margin-top:0;"><span class="tag ${m.status}">${m.status}</span>
+        <button class="btn secondary small" onclick="removerMarcacao('${m.id}')">Remover</button>
+      </div></div>`).join("");
 
   const wa = negocio.whatsapp || "";
   document.getElementById("wa-contact-display").innerHTML = wa
@@ -719,11 +736,17 @@ function renderVendas(){
   let total = 0;
   const rows = lista.map(v=>{
     total += Number(v.valor)||0;
-    return `<tr><td>${fmtDataPT(v.data)}</td><td>${escapeHtml(nomeDaMarcacao(v))}</td><td>${escapeHtml(servicoNome(v.servicoId))}</td><td>${v.pagamento||""}</td><td style="text-align:right">${fmtEuro(v.valor)}</td></tr>`;
+    return `<tr><td>${fmtDataPT(v.data)}</td><td>${escapeHtml(nomeDaMarcacao(v))}</td><td>${escapeHtml(servicoNome(v.servicoId))}</td><td>${v.pagamento||""}</td><td style="text-align:right">${fmtEuro(v.valor)}</td><td><button class="btn secondary small" onclick="removerVenda('${v.id}')">Remover</button></td></tr>`;
   }).join("");
-  el.innerHTML = `<table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Pagamento</th><th style="text-align:right">Valor</th></tr></thead>
-    <tbody>${rows}</tbody><tfoot><tr><td colspan="4">Total</td><td style="text-align:right">${fmtEuro(total)}</td></tr></tfoot></table>`;
+  el.innerHTML = `<table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Pagamento</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr><td colspan="4">Total</td><td style="text-align:right">${fmtEuro(total)}</td><td></td></tr></tfoot></table>`;
 }
+
+window.removerVenda = async function(id){
+  if(!confirm("Remover esta venda definitivamente? (Não altera a marcação associada, se existir.)")) return;
+  await deleteDoc(doc(db,"negocios",uid,"vendas",id));
+  showToast("Venda removida");
+};
 window.exportarCSV = function(){
   const lista = vendasFiltradas();
   if(lista.length===0){ showToast("Sem vendas para exportar"); return; }
