@@ -35,7 +35,31 @@
   .err{color:#e59a9a;font-size:.82rem;margin-top:8px;}
   .ok{background:var(--panel);border:1px solid var(--green);border-radius:var(--radius);padding:24px;text-align:center;}
   .ok h2{color:#7fd999;margin-top:0;}
+
+  /* Tema claro "Prime Value" — ativado com ?tema=prime no link */
+  body.tema-prime{background:#f5f8f8;color:#1f2937;}
+  body.tema-prime header{background:linear-gradient(135deg,#0b3b38,#156158);border-bottom:none;}
+  body.tema-prime header h1{color:#ffffff;}
+  body.tema-prime header .sub{color:#cfe8e4;}
+  body.tema-prime .card{background:#ffffff;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(15,60,55,.06);}
+  body.tema-prime .card h2{color:#0e5953;}
+  body.tema-prime label{color:#6b7280;}
+  body.tema-prime input,body.tema-prime select,body.tema-prime textarea{background:#f3f6f6;border:1px solid #d6e2e0;color:#1f2937;}
+  body.tema-prime .servico-opt{border:1px solid #d6e2e0;}
+  body.tema-prime .servico-opt.selected{border-color:#e8804f;background:rgba(232,128,79,.08);}
+  body.tema-prime .servico-opt .preco{color:#e8804f;}
+  body.tema-prime .slot{background:#f3f6f6;border:1px solid #d6e2e0;color:#1f2937;}
+  body.tema-prime .slot.selected{background:#e8804f;color:#fff;border-color:#e8804f;}
+  body.tema-prime .btn{background:#e8804f;color:#ffffff;}
+  body.tema-prime .empty{color:#8a9b98;}
+  body.tema-prime .ok{background:#ffffff;border:1px solid #2f7a44;}
+  body.tema-prime .ok h2{color:#2f7a44;}
 </style>
+<script>
+  if(new URLSearchParams(location.search).get('tema')==='prime'){
+    document.addEventListener('DOMContentLoaded', ()=>document.body.classList.add('tema-prime'));
+  }
+</script>
 </head>
 <body>
 
