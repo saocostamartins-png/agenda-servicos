@@ -486,7 +486,9 @@ function lerHorarioUI(){
 }
 
 function linkMarcacaoUrl(){
-  return `${window.location.origin}/marcar.html?negocio=${uid}`;
+  const NEGOCIO_ID_TEMA_PRIME = "YAPMGPgoK7OfsIyh24VUUTKk34B2"; // Prime Value
+  const temaParam = (uid === NEGOCIO_ID_TEMA_PRIME) ? "&tema=prime" : "";
+  return `${window.location.origin}/marcar.html?negocio=${uid}${temaParam}`;
 }
 function renderLinkMarcacao(){
   document.getElementById("link-marcacao-display").innerHTML =
