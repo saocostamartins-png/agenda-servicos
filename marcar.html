@@ -103,6 +103,11 @@
   </div>
 </main>
 
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  if (window.emailjs) { emailjs.init("8EOTqmIAUJIEvxujn"); }
+</script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
@@ -283,6 +288,15 @@ window.confirmarMarcacaoPublica = async function(){
     document.getElementById("confirmacao").style.display = "block";
     document.getElementById("confirmacao-texto").textContent =
       `${servicoSelecionado.nome} — ${dataSel.split("-").reverse().join("/")} às ${horaSelecionada}. Já está marcado!`;
+
+    if (window.emailjs) {
+      emailjs.send("service_zx62icm", "template_s1htocn", {
+        cliente: nome,
+        servico: servicoSelecionado.nome,
+        data_hora: `${dataSel.split("-").reverse().join("/")} às ${horaSelecionada}`,
+        telefone: telefone
+      }).catch(err => console.error("Falha ao enviar notificação por email:", err));
+    }
   }catch(e){
     erroEl.textContent = "Não foi possível confirmar a marcação. Tenta novamente.";
     btn.disabled = false; btn.textContent = "Confirmar marcação";
